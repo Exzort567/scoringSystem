@@ -18,7 +18,7 @@ export async function GET(_: Request, context: { params: Promise<{ roundId: stri
 
     // Get scores for this round, including judge and contestant data
     const scores = await Score.find({ roundId })
-      .populate("contestantId", "name gender barangay")
+      .populate("contestantId", "name gender barangay number")
       .populate("judgeId", "name email")
       .lean();
 

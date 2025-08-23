@@ -25,44 +25,49 @@ export async function GET() {
       const round = s.roundId;
       if (!contestant || !round) return;
 
-      if (!contestantMap[contestant._id]) {
-        contestantMap[contestant._id] = {
-          _id: contestant._id,
+      const contestantId = String(contestant._id);
+      const roundId = String(round._id);
+
+      if (!contestantMap[contestantId]) {
+        contestantMap[contestantId] = {
+          _id: contestantId,
           number: contestant.number,
           name: contestant.name,
           category: contestant.category,
           photoUrl: contestant.photoUrl,
-          roundScores: {}, // per round total
-          totalScore: 0,   // sum of all rounds
+          roundScores: {} as Record<string, number>, // per round total
+          totalScore: 0, // sum of all rounds
         };
       }
 
       // Sum judge scores for this round
-      contestantMap[contestant._id].roundScores[round._id] =
-        (contestantMap[contestant._id].roundScores[round._id] || 0) +
+      contestantMap[contestantId].roundScores[roundId] =
+        (contestantMap[contestantId].roundScores[roundId] || 0) +
         (s.totalRoundScore || 0);
     });
 
-    // Calculate totals for each contestant (sum, not weighted)
+    // Calculate totals for each contestant (sum of all rounds)
     Object.values(contestantMap).forEach((contestant: any) => {
       let total = 0;
       rounds.forEach((round: any) => {
-        total += contestant.roundScores[round._id] || 0;
+        const roundId = String(round._id);
+        total += contestant.roundScores[roundId] || 0;
       });
       contestant.totalScore = total;
     });
 
-    // Create overall leaderboard (sorted descending)
+    // Create overall leaderboard
     const overall = Object.values(contestantMap).sort(
       (a: any, b: any) => b.totalScore - a.totalScore
     );
 
     // Split leaderboard by category
     const overallMr = overall.filter((c: any) => c.category === "Mr");
-    const overallMiss = overall.filter((c: any) => c.category === "Miss");
+    const overallMiss = overall.filter((c: any) => c.category === "Ms");
 
     // Build per-round leaderboards
     const roundResults = rounds.map((round: any) => {
+      const roundId = String(round._id);
       const results = Object.values(contestantMap)
         .map((c: any) => ({
           _id: c._id,
@@ -70,21 +75,47 @@ export async function GET() {
           name: c.name,
           category: c.category,
           photoUrl: c.photoUrl,
-          score: c.roundScores[round._id] || 0,
+          score: c.roundScores[roundId] || 0,
         }))
         .sort((a, b) => b.score - a.score);
       return {
-        _id: round._id,
+        _id: roundId,
         name: round.name,
         results,
       };
     });
 
-    // Get Top 5 for finals (per category)
-    const finalists = {
-      mrTop5: overallMr.slice(0, 5),
-      missTop5: overallMiss.slice(0, 5),
-    };
+    // ✅ Get Final Round explicitly
+    const finalRound = rounds.find((r: any) =>
+      r.name.toLowerCase().includes("final")
+    );
+
+    let mrTop5: any[] = [];
+    let missTop5: any[] = [];
+
+    if (finalRound) {
+      const finalRoundId = String(finalRound._id);
+
+      mrTop5 = Object.values(contestantMap)
+        .filter((c: any) => c.category === "Mr")
+        .map((c: any) => ({
+          ...c,
+          finalScore: c.roundScores[finalRoundId] || 0,
+        }))
+        .sort((a, b) => b.finalScore - a.finalScore)
+        .slice(0, 5);
+
+      missTop5 = Object.values(contestantMap)
+        .filter((c: any) => c.category === "Ms")
+        .map((c: any) => ({
+          ...c,
+          finalScore: c.roundScores[finalRoundId] || 0,
+        }))
+        .sort((a, b) => b.finalScore - a.finalScore)
+        .slice(0, 5);
+    }
+
+    const finalists = { mrTop5, missTop5 };
 
     return NextResponse.json({
       overall,

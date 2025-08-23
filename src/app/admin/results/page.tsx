@@ -7,20 +7,14 @@ import { ably } from "../../lib/ably";
 export default function ResultsPage() {
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overall" | "rounds" | "finals">(
-    "overall"
-  );
+  const [activeTab, setActiveTab] = useState<"rounds" | "finals">("finals");
 
   useEffect(() => {
     async function fetchResults() {
       try {
         const res = await fetch("/api/results");
         const data = await res.json();
-
-        const finalistsRes = await fetch("/api/top5");
-        const finalists = await finalistsRes.json();
-
-        setResults({ ...data, finalists }); // merge
+        setResults(data);
       } catch (err) {
         console.error("Error fetching results:", err);
       } finally {
@@ -36,14 +30,14 @@ export default function ResultsPage() {
     return () => channel.unsubscribe("newScore", handler);
   }, []);
 
-
   if (loading) return <p className="p-6 text-gray-600">Loading results...</p>;
 
-  const mrWinners = results.overall.filter((c: any) => c.category === "Mr");
-  const msWinners = results.overall.filter((c: any) => c.category === "Ms");
+  // ✅ Winners from Final Round only
+  const mrFinalists = results?.finalists?.mrTop5 || [];
+  const msFinalists = results?.finalists?.missTop5 || [];
 
-  const mrChampion = mrWinners[0];
-  const msChampion = msWinners[0];
+  const mrChampion = mrFinalists.length > 0 ? mrFinalists[0] : null;
+  const msChampion = msFinalists.length > 0 ? msFinalists[0] : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -69,7 +63,12 @@ export default function ResultsPage() {
                   className="w-48 h-48 rounded-2xl object-cover shadow-lg mb-4"
                 />
                 <p className="text-lg font-semibold">{winner.name}</p>
-                <p className="text-gray-600">Total Score: <span className="font-bold">{winner.totalScore.toFixed(2)}</span></p>
+                <p className="text-gray-600">
+                  Final Round Score:{" "}
+                  <span className="font-bold">
+                    {winner.finalScore?.toFixed(2)}
+                  </span>
+                </p>
               </>
             ) : (
               <p className="text-gray-500">No winner yet</p>
@@ -80,7 +79,7 @@ export default function ResultsPage() {
 
       {/* Tabs */}
       <div className="flex gap-3 border-b mb-4">
-        {["overall", "rounds", "finals"].map((tab) => (
+        {["rounds", "finals"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -97,50 +96,6 @@ export default function ResultsPage() {
 
       {/* Tab Content */}
       <div className="bg-white rounded-xl shadow p-6">
-        {activeTab === "overall" && (
-          <>
-            <h2 className="text-xl font-semibold text-emerald-700 mb-4">
-              Overall Leaderboard
-            </h2>
-            {["Mr", "Ms"].map((cat) => (
-              <div key={cat} className="mb-6">
-                <h3 className="text-lg font-bold text-gray-700 mb-2">
-                  {cat} Category
-                </h3>
-                <table className="w-full border border-gray-200 text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="p-2 border">Rank</th>
-                      <th className="p-2 border">Contestant</th>
-                      <th className="p-2 border">Total Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.overall
-                      .filter((c: any) => c.category === cat)
-                      .map((c: any, idx: number) => (
-                        <tr key={c._id}>
-                          <td className="p-2 border font-bold">{idx + 1}</td>
-                          <td className="p-2 border flex items-center gap-2">
-                            <img
-                              src={c.photoUrl || "/images/avatar.png"}
-                              alt={c.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                            {c.number}. {c.name}
-                          </td>
-                          <td className="p-2 border font-semibold">
-                            {c.totalScore.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </>
-        )}
-
         {activeTab === "rounds" && (
           <>
             <h2 className="text-xl font-semibold text-emerald-700 mb-4">
@@ -149,7 +104,7 @@ export default function ResultsPage() {
             {results?.rounds?.map((round: any) => (
               <div key={round._id} className="mb-6">
                 <h3 className="text-lg font-bold text-gray-700 mb-2">
-                  {round.name} ({round.weight}%)
+                  {round.name} ({round.weight || 0}%)
                 </h3>
                 <table className="w-full border border-gray-200 text-sm mb-4">
                   <thead className="bg-gray-100">
@@ -213,7 +168,7 @@ export default function ResultsPage() {
                               </span>
                             </div>
                             <span className="text-emerald-600 font-bold">
-                              {f.total.toFixed(2)}
+                              {f.finalScore?.toFixed(2)}
                             </span>
                           </li>
                         ))}
@@ -229,7 +184,6 @@ export default function ResultsPage() {
             )}
           </>
         )}
-
       </div>
     </div>
   );

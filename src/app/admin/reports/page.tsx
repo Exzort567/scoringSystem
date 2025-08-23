@@ -4,7 +4,6 @@ import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Type for rounds
 interface Round {
   _id: string;
   name: string;
@@ -12,10 +11,9 @@ interface Round {
   weight: number;
 }
 
-// Type for scores returned by API
 interface Score {
   _id: string;
-  contestantId: { _id: string; name: string; barangay?: string };
+  contestantId: { _id: string; name: string; barangay?: string; number?: number };
   judgeId: { _id: string; name: string; email: string };
   totalRoundScore: number;
   createdAt: string;
@@ -25,7 +23,6 @@ export default function ReportsPage() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch rounds to display buttons dynamically
   useEffect(() => {
     const fetchRounds = async () => {
       try {
@@ -38,21 +35,17 @@ export default function ReportsPage() {
     fetchRounds();
   }, []);
 
-  // Handle print
   const handlePrint = async (roundId: string, roundName: string) => {
     try {
       setLoading(true);
 
-      // Initialize PDF
       const doc = new jsPDF("p", "mm", "a4");
 
-      // Load logo
       const logo = "/images/logo.jpg";
       const img = new Image();
       img.src = logo;
 
       img.onload = async () => {
-        // Header
         doc.addImage(img, "PNG", 10, 10, 20, 20);
         doc.setFontSize(14);
         doc.text("Mr and Miss Linggo ng Kabataan 2025", 35, 20);
@@ -61,46 +54,43 @@ export default function ReportsPage() {
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 35, 34);
 
         if (roundName === "Final Round (Top 5)") {
-          // ✅ Fetch top 5 directly
-          const { data } = await axios.get("/api/top5");
+          const { data } = await axios.get("/api/reports/finals");
 
           // Mr Top 5
           autoTable(doc, {
             startY: 40,
             head: [["#", "Contestant", "Barangay", "Score"]],
             body: data.mrTop5.map((c: any, i: number) => [
-              i + 1,
-              `${c.number}. ${c.name}`,
+              c.number,
+              `${c.name}`,
               c.barangay,
-              c.total.toFixed(2),
+              c.finalScore.toFixed(2), // ✅ FIXED
             ]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [46, 125, 50], textColor: [255, 255, 255] },
             theme: "grid",
           });
 
-          // Ms Top 5 (start new section below)
+          // Ms Top 5
           autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 10,
             head: [["#", "Contestant", "Barangay", "Score"]],
             body: data.missTop5.map((c: any, i: number) => [
-              i + 1,
-              
-              `${c.number}. ${c.name}`,
+              c.number,
+              `${c.name}`,
               c.barangay,
-              c.total.toFixed(2),
+              c.finalScore.toFixed(2), // ✅ FIXED
             ]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [46, 125, 50], textColor: [255, 255, 255] },
             theme: "grid",
           });
         } else {
-          // ✅ Normal rounds (your existing code)
           const { data } = await axios.get(`/api/reports/${roundId}`);
-          const { scores, date } = data;
+          const { scores } = data;
 
           const tableData = scores.map((s: Score, i: number) => [
-            i + 1,
+            s.contestantId?.number || "N/A",
             s.contestantId?.name || "N/A",
             s.contestantId?.barangay || "N/A",
             s.judgeId?.name || "N/A",
@@ -117,7 +107,6 @@ export default function ReportsPage() {
           });
         }
 
-        // Save PDF
         doc.save(`${roundName}_report.pdf`);
         setLoading(false);
       };
@@ -127,7 +116,6 @@ export default function ReportsPage() {
       alert("Failed to generate PDF. Check console for details.");
     }
   };
-
 
   return (
     <div>
