@@ -18,10 +18,12 @@
         "name": "next"
       }
     ],
+   "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./*"]
     }
+    
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/judge", "src/app/api/contestants/[id]/rout.tss"],
   "exclude": ["node_modules"]
 }
