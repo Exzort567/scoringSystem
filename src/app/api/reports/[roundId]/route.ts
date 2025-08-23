@@ -1,23 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "../../../lib/mongodb";
-import Score from "../../../lib/models//Score";
+import Score from "../../../lib/models/Score";
 import User from "../../../lib/models/Users";
-import Contestant from "../../../lib/models//Contestant";
+import Contestant from "../../../lib/models/Contestant";
 import Round from "../../../lib/models/Round";
 
-export async function GET(req: Request, { params }: { params: { roundId: string } }) {
+export async function GET(req: NextRequest, context: { params: { roundId: string } }) {
   try {
     await connectDB();
 
-    const { roundId } = params;
+    const { roundId } = context.params;
 
-    // Get round info
     const round = await Round.findById(roundId);
     if (!round) {
       return NextResponse.json({ message: "Round not found" }, { status: 404 });
     }
 
-    // Get scores for this round, including judge and contestant data
     const scores = await Score.find({ roundId })
       .populate("contestantId", "name gender barangay")
       .populate("judgeId", "name email")
