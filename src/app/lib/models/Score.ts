@@ -12,7 +12,7 @@ const ScoreSchema = new Schema(
         weight: { type: Number, required: true },
         weightedScore: { type: Number, required: true },
         notes: { type: String, default: "" },
-      },
+      }, 
     ],
     totalRoundScore: { type: Number, required: true },
     isSubmitted: { type: Boolean, default: false },

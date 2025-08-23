@@ -15,9 +15,8 @@ interface Round {
 // Type for scores returned by API
 interface Score {
   _id: string;
-  contestantId: { _id: string; name: string };
+  contestantId: { _id: string; name: string; barangay?: string };
   judgeId: { _id: string; name: string; email: string };
-  barangay?: string;
   totalRoundScore: number;
   createdAt: string;
 }
